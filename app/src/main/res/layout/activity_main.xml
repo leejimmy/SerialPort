@@ -230,13 +230,14 @@
             android:text="1A285C6D158686860F"
             android:lines="2" />
 
-        <Button
+        <ToggleButton
             android:id="@+id/sph_sendBtn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:background="@drawable/button_style_org"
-            android:text="发送" />
+            android:checked="true"
+            android:text="开始/停止发送" />
 
     </LinearLayout>
 

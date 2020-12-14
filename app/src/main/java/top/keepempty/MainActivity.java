@@ -10,10 +10,14 @@ import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ToggleButton;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.TimerTask;
 
 import top.keepempty.sph.library.DataConversion;
 import top.keepempty.sph.library.SerialPortConfig;
@@ -32,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private TextView mShowReceiveTxt;
 
-    private Button mSendBtn;
+    private ToggleButton mSendBtn;
     private Button mOpenBtn;
 
     private EditText mSendDataEt;
@@ -48,11 +52,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private char checkBits = 'N';
     private int stopBits = 1;
     private String path;
+    private String sendTxt;
+    private MyTask mt;
 
     private SerialPortFinder mSerialPortFinder;
     private String[] entryValues;
     private boolean isOpen;
     private StringBuilder receiveTxt = new StringBuilder();
+    java.util.Timer timer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,7 +74,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         init();
     }
 
+    private class MyTask extends TimerTask {
+        public MyTask() {}
+        public void run() {
+            //每次需要执行的代码放到这里面。
+            //serialPortHelper.addCommands(sendTxt);
+            /*直接调用JNI库发送数据*/
+            SerialPortJNI.writePort(DataConversion.decodeHexString(sendTxt));
+            //setContentView(R.layout.activity_setting);  //加载layout_2布局文件
+        }
+    }
+
     private void setting_init(){
+        mPathSpinner.setSelection(1);
         mBaudRateSpinner.setSelection(17);
         mDataSpinner.setSelection(3);
         mCheckSpinner.setSelection(0);
@@ -94,29 +113,34 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         mCheckSpinner = findViewById(R.id.sph_check);
         mStopSpinner = findViewById(R.id.sph_stop);
         mOpenBtn = findViewById(R.id.sph_openBtn);
-        mSendBtn = findViewById(R.id.sph_sendBtn);
+        mSendBtn = (ToggleButton)findViewById(R.id.sph_sendBtn);
         mShowReceiveTxt = findViewById(R.id.sph_showReceiveTxt);
         mSendDataEt = findViewById(R.id.sph_sendDataEt);
 
         setting_init();
 
-        mSendBtn = findViewById(R.id.sph_sendBtn);
-        mSendBtn.setOnClickListener(new View.OnClickListener() {
+        mSendBtn = (ToggleButton)findViewById(R.id.sph_sendBtn);
+        mSendBtn.setOnCheckedChangeListener(new ToggleButton.OnCheckedChangeListener() {
             @Override
-            public void onClick(View v) {
-                String sendTxt = mSendDataEt.getText().toString().trim();
-                if(TextUtils.isEmpty(sendTxt)){
-                    Toast.makeText(MainActivity.this,"请输入发送命令！",Toast.LENGTH_LONG).show();
-                    return;
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if(!isChecked){
+                    Log.d(TAG,"ljm : start to send command");
+                    mt = new MyTask();
+                    timer = new java.util.Timer(true);
+                    sendTxt = mSendDataEt.getText().toString().trim();
+                    if(TextUtils.isEmpty(sendTxt)){
+                        Toast.makeText(MainActivity.this,"请输入发送命令！",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if (sendTxt.length() % 2 == 1) {
+                        Toast.makeText(MainActivity.this,"命令错误！",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    timer.schedule(mt, 0, 200);
+                }else{
+                    Log.d(TAG,"ljm : stop sending command");
+                    timer.cancel();
                 }
-                if (sendTxt.length() % 2 == 1) {
-                    Toast.makeText(MainActivity.this,"命令错误！",Toast.LENGTH_LONG).show();
-                    return;
-                }
-                //serialPortHelper.addCommands(sendTxt);
-                /*直接调用JNI库发送数据*/
-                SerialPortJNI.writePort(DataConversion.decodeHexString(sendTxt));
-                //setContentView(R.layout.activity_setting);  //加载layout_2布局文件
             }
         });
 
